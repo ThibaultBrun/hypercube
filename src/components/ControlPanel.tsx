@@ -127,7 +127,7 @@ export default function ControlPanel() {
 
         {dimension === 4 && (
           <Section title="View" defaultOpen={true}>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setView("rotating")}
                 className={`btn ${view === "rotating" ? "btn-active" : ""}`}
@@ -141,6 +141,12 @@ export default function ControlPanel() {
                 Build
               </button>
               <button
+                onClick={() => setView("bloom")}
+                className={`btn ${view === "bloom" ? "btn-active" : ""}`}
+              >
+                Bloom
+              </button>
+              <button
                 onClick={() => setView("dali")}
                 className={`btn ${view === "dali" ? "btn-active" : ""}`}
               >
@@ -152,6 +158,8 @@ export default function ControlPanel() {
                 "Tesseract unfolded into Dalí's 3D cross — 8 cubes laid out in space, each colored to identify."}
               {view === "build" &&
                 "Watch the cube extrude along W (yellow edges) to form 8 cubic cells — the construction of the tesseract."}
+              {view === "bloom" &&
+                "Original view — the 8 cells are pushed apart in 4D before projection. They breathe outward in pulses, revealing the tesseract's structure as a flower."}
               {view === "rotating" && "Standard 4D rotation projected to 3D."}
             </p>
           </Section>

@@ -58,6 +58,7 @@ export default function HypercubeMesh() {
   const buildStart = useStore((s) => s.buildStart);
   const dali = view === "dali" && dimension === 4;
   const build = view === "build" && dimension === 4;
+  const bloom = view === "bloom" && dimension === 4;
 
   const cube = useMemo(() => buildNCube(dimension), [dimension]);
   const planes = useMemo(() => planesFor(dimension), [dimension]);
@@ -148,6 +149,18 @@ export default function HypercubeMesh() {
     }
     return arr;
   }, [cells.length, vertsPerCell]);
+
+  const cellCentroids = useMemo(() => {
+    return cells.map((cell) => {
+      const c = new Array(dimension).fill(0);
+      for (const vi of cell.vertices) {
+        const v = cube.vertices[vi];
+        for (let d = 0; d < dimension; d++) c[d] += v[d];
+      }
+      for (let d = 0; d < dimension; d++) c[d] /= cell.vertices.length;
+      return c;
+    });
+  }, [cells, cube.vertices, dimension]);
 
   const cellBaseColors = useMemo(() => {
     const arr: THREE.Color[] = [];
@@ -270,7 +283,16 @@ export default function HypercubeMesh() {
       vertexPositions[i * 3 + 2] = projected[i][2];
     }
 
-    if ((showCells || dali || build) && cells.length > 0) {
+    let bloomFactor = 0;
+    if (bloom) {
+      const t = (Date.now() - buildStart) / 1000;
+      bloomFactor = 0.9 + 0.9 * (0.5 - 0.5 * Math.cos(t * 0.6));
+    }
+    const rotatedCentroids = bloom
+      ? cellCentroids.map((c) => rotatePoint(c, activeRotations))
+      : null;
+
+    if ((showCells || dali || build || bloom) && cells.length > 0) {
       const anyHighlight = highlightCell >= 0 || highlightPair >= 0;
       for (let ci = 0; ci < cells.length; ci++) {
         const cell = cells[ci];
@@ -280,6 +302,32 @@ export default function HypercubeMesh() {
         const focused = !anyHighlight || highlightCell === ci || inPair;
         const dimMul = focused ? 1 : 0.06;
         const baseColor = cellBaseColors[ci];
+
+        if (bloom && rotatedCentroids) {
+          const offset = rotatedCentroids[ci];
+          let wAvg = 0;
+          for (let vi = 0; vi < vertsPerCell; vi++) {
+            const v4 = rotated[cell.vertices[vi]];
+            const exploded = v4.map((x, d) => x + bloomFactor * offset[d]);
+            wAvg += exploded.length > 3 ? exploded.slice(3).reduce((a, b) => a + b, 0) / (exploded.length - 3) : 0;
+            const proj = projectTo3D(exploded, projection, projectionDistances);
+            const off = (baseV + vi) * 3;
+            cellPositions[off + 0] = proj[0] * scale;
+            cellPositions[off + 1] = proj[1] * scale;
+            cellPositions[off + 2] = proj[2] * scale;
+          }
+          wAvg /= vertsPerCell;
+          const t = (wAvg - minW) / wRange;
+          const depth = THREE.MathUtils.lerp(1 - depthFade, 1, t);
+          const m = dimMul * depth;
+          for (let vi = 0; vi < vertsPerCell; vi++) {
+            const off = (baseV + vi) * 3;
+            cellColorBuf[off + 0] = baseColor.r * m;
+            cellColorBuf[off + 1] = baseColor.g * m;
+            cellColorBuf[off + 2] = baseColor.b * m;
+          }
+          continue;
+        }
 
         if (dali) {
           const center = daliCenter(cell);
@@ -345,7 +393,7 @@ export default function HypercubeMesh() {
 
   return (
     <group>
-      {(showCells || dali || build) && cells.length > 0 && (
+      {(showCells || dali || build || bloom) && cells.length > 0 && (
         <mesh ref={cellRef} renderOrder={-1}>
           <bufferGeometry>
             <bufferAttribute
@@ -361,7 +409,7 @@ export default function HypercubeMesh() {
           <meshBasicMaterial
             vertexColors
             transparent
-            opacity={dali ? Math.max(cellOpacity, 0.55) : build ? 0.32 : cellOpacity}
+            opacity={dali ? Math.max(cellOpacity, 0.55) : build ? 0.32 : bloom ? 0.42 : cellOpacity}
             side={THREE.DoubleSide}
             depthWrite={dali}
             toneMapped={false}
@@ -369,7 +417,7 @@ export default function HypercubeMesh() {
         </mesh>
       )}
 
-      {(dali || build || (showCells && cellEdges)) && cells.length > 0 && (
+      {(dali || build || bloom || (showCells && cellEdges)) && cells.length > 0 && (
         <lineSegments ref={cellEdgeRef} renderOrder={0}>
           <bufferGeometry>
             <bufferAttribute
@@ -385,14 +433,14 @@ export default function HypercubeMesh() {
           <lineBasicMaterial
             vertexColors
             transparent
-            opacity={dali || build ? 1 : Math.min(1, cellOpacity * 4)}
+            opacity={dali || build || bloom ? 1 : Math.min(1, cellOpacity * 4)}
             depthWrite={false}
             toneMapped={false}
           />
         </lineSegments>
       )}
 
-      {!dali && (
+      {!dali && !bloom && (
       <lineSegments ref={lineRef} renderOrder={1}>
         <bufferGeometry>
           <bufferAttribute
@@ -413,7 +461,7 @@ export default function HypercubeMesh() {
       </lineSegments>
       )}
 
-      {!dali && showVertices && (
+      {!dali && !bloom && showVertices && (
         <points ref={pointRef} renderOrder={2}>
           <bufferGeometry>
             <bufferAttribute

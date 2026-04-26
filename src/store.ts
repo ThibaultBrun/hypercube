@@ -33,7 +33,7 @@ export interface HypercubeState {
   cellEdges: boolean;
   highlightPair: number;
   pairColorMode: boolean;
-  view: "rotating" | "dali" | "build";
+  view: "rotating" | "dali" | "build" | "bloom";
   buildStart: number;
 
   setDimension: (n: number) => void;
@@ -66,7 +66,7 @@ export interface HypercubeState {
   setCellEdges: (v: boolean) => void;
   setHighlightPair: (v: number) => void;
   setPairColorMode: (v: boolean) => void;
-  setView: (v: "rotating" | "dali" | "build") => void;
+  setView: (v: "rotating" | "dali" | "build" | "bloom") => void;
 }
 
 const DEFAULT_DIM = 4;
