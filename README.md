@@ -19,9 +19,10 @@ Built with **Vite + React + TypeScript**, rendered with **Three.js / react-three
 ### Features
 
 - **3D, 4D, 5D** — switch between cube (8 vertices), tesseract (16 vertices), and penteract (32 vertices)
-- **Three views**:
+- **Four views**:
   - **Rotating** — standard 4D rotation projected to 3D
   - **Build** — animated construction: watch the cube extrude along the W axis (yellow edges) and the 8 cubic cells form one by one
+  - **Bloom** — original "exploded view": the 8 cells are pushed apart **inside 4D** before projection, so they breathe outward and reform like a flower (see [§7 below](#7-the-bloom-view-an-exploded-view-in-4d))
   - **Dalí** — tesseract unfolded into the 3D Latin cross of *Crucifixion (Corpus Hypercubus)*
 - **All rotation planes exposed** — `XY`, `XZ`, `XW`, `YZ`, `YW`, `ZW`… up to 10 planes in 5D
 - **Manual angles + auto-rotate speeds** for every plane independently
@@ -116,6 +117,33 @@ k = d / (d − w)      // d = "eye distance" along that axis
 
 This is the *Schlegel diagram* style projection: vertices with larger W project farther from the origin. That's why the tesseract is usually drawn as "a smaller cube inside a bigger cube" — the small one is the W=−1 cell, the big one is W=+1, and the 8 connecting edges form the 6 "side" cubes.
 
+#### 7. The "Bloom" view — an exploded view *in 4D*
+
+Most tesseract visualizations operate in the 3D image after projection: rotate the 4D rotation matrix (Rotating), or unfold the cells into a 3D net (Dalí). **Bloom** does something neither of those does — it manipulates the cells **inside 4D**, *before* the Schlegel projection runs.
+
+**The trick:**
+
+1. For each of the 8 cells, compute its **4D centroid** (the average of its 8 vertex coordinates in `R^4`). For an axis-aligned tesseract this lands on a coordinate axis: e.g. the X+ cell's centroid is `(+1, 0, 0, 0)`, the W− cell's centroid is `(0, 0, 0, −1)`, and so on.
+
+2. Pick a *bloom factor* `α ∈ [0, ~2]`, oscillating slowly with a cosine.
+
+3. Before projecting each cell's vertices to 3D, **translate them by `α · centroid` in 4D**:
+   ```
+   v_exploded = v + α · centroid_of_cell(v)
+   ```
+
+4. Apply the standard Schlegel projection.
+
+**What you see:**
+
+- The 6 axis-aligned cells (`X±`, `Y±`, `Z±`) drift outward along the 6 cardinal 3D directions, exactly where you'd expect.
+- The `W−` cell drifts toward `W = −2` — under Schlegel `(d − w)` denominator, this **shrinks it dramatically** into a tiny inner core.
+- The `W+` cell drifts toward `W = +2` — same denominator, opposite effect: it **inflates into a huge outer shell** that contains the rest.
+- The 4D rotations keep running, so the whole flower tumbles gently.
+- `α` pulses on a ~10 s period so the flower breathes: closed → bloomed → closed.
+
+**Why it's a "new" representation:** it's an exploded view, but the explosion happens in 4D, not 3D. Every cell's centroid points in a different 4D direction (one of the 8 unit-axis directions ±X, ±Y, ±Z, ±W), so the eight cells separate cleanly without artificial offsets — the geometry of the tesseract itself dictates where each cell goes. The result is something you couldn't draw with classical 3D-only tooling.
+
 ---
 
 ### Stack
@@ -160,9 +188,10 @@ Construit avec **Vite + React + TypeScript**, rendu avec **Three.js / react-thre
 ### Fonctionnalités
 
 - **3D, 4D, 5D** — bascule entre cube (8 sommets), tesseract (16 sommets) et pentéract (32 sommets)
-- **Trois vues** :
+- **Quatre vues** :
   - **Rotating** — rotation 4D classique projetée en 3D
   - **Build** — construction animée : on regarde le cube s'extruder le long de l'axe W (arêtes jaunes) et les 8 cellules cubiques se former une par une
+  - **Bloom** — "vue éclatée" originale : les 8 cellules sont écartées **dans la 4D** avant la projection, elles respirent vers l'extérieur et se referment comme une fleur (voir [§7 plus bas](#7-la-vue-bloom--une-vue-éclatée-en-4d))
   - **Dalí** — tesseract déplié en croix latine 3D, comme dans *Crucifixion (Corpus Hypercubus)*
 - **Tous les plans de rotation exposés** — `XY`, `XZ`, `XW`, `YZ`, `YW`, `ZW`… jusqu'à 10 plans en 5D
 - **Angles manuels + vitesses d'auto-rotation** pour chaque plan indépendamment
@@ -256,6 +285,33 @@ k = d / (d − w)      // d = "distance d'œil" sur cet axe
 ```
 
 C'est la projection façon *diagramme de Schlegel* : les sommets avec un W plus grand se projettent plus loin de l'origine. C'est pour ça que le tesseract se dessine classiquement comme "un petit cube dans un grand cube" — le petit est la cellule W=−1, le grand est W=+1, et les 8 arêtes de liaison forment les 6 cubes "latéraux".
+
+#### 7. La vue "Bloom" — une vue éclatée *en 4D*
+
+La plupart des visualisations de tesseract opèrent dans l'image 3D après projection : on tourne la matrice de rotation 4D (Rotating), ou on déplie les cellules dans un patron 3D (Dalí). **Bloom** fait autre chose — on manipule les cellules **directement en 4D**, *avant* d'appliquer la projection Schlegel.
+
+**Le truc :**
+
+1. Pour chacune des 8 cellules, on calcule son **centroïde 4D** (la moyenne des coordonnées 4D de ses 8 sommets). Pour un tesseract aligné sur les axes, ce centroïde tombe pile sur un axe : la cellule X+ a son centroïde en `(+1, 0, 0, 0)`, la cellule W− en `(0, 0, 0, −1)`, etc.
+
+2. On choisit un *facteur d'éclatement* `α ∈ [0, ~2]`, qui oscille lentement en cosinus.
+
+3. Avant de projeter les sommets de chaque cellule en 3D, on les **translate de `α · centroïde` en 4D** :
+   ```
+   v_éclaté = v + α · centroïde_de_la_cellule(v)
+   ```
+
+4. On applique la projection Schlegel habituelle.
+
+**Ce qu'on voit :**
+
+- Les 6 cellules axiales (`X±`, `Y±`, `Z±`) glissent vers l'extérieur le long des 6 directions cardinales 3D, comme attendu.
+- La cellule `W−` glisse vers `W = −2` — sous le dénominateur Schlegel `(d − w)`, elle **rétrécit drastiquement** en un noyau minuscule au centre.
+- La cellule `W+` glisse vers `W = +2` — même dénominateur, effet inverse : elle **gonfle en une coquille gigantesque** qui englobe tout le reste.
+- Les rotations 4D continuent de tourner, donc toute la fleur pivote doucement.
+- `α` pulse sur une période ~10 s donc la fleur respire : fermée → éclose → fermée.
+
+**Pourquoi c'est une représentation "nouvelle" :** c'est une vue éclatée, mais l'éclatement se fait en 4D, pas en 3D. Le centroïde de chaque cellule pointe dans une direction 4D différente (l'une des 8 directions ±X, ±Y, ±Z, ±W), donc les huit cellules se séparent proprement sans avoir à inventer un offset arbitraire — c'est la géométrie du tesseract elle-même qui décide où va chaque cellule. Le résultat est quelque chose qu'on ne pourrait pas dessiner avec des outils 3D classiques.
 
 ---
 
