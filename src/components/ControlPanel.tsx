@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { useStore, PRESET_NAMES } from "../store";
 import { planesFor } from "../hypercube/rotation";
+import { buildCells, buildCellPairs } from "../hypercube/geometry";
 import Section from "./Section";
 import Slider from "./Slider";
 import ColorField from "./ColorField";
@@ -26,8 +28,19 @@ export default function ControlPanel() {
   const showVertices = useStore((s) => s.showVertices);
   const depthFade = useStore((s) => s.depthFade);
   const preset = useStore((s) => s.preset);
+  const showCells = useStore((s) => s.showCells);
+  const cellOpacity = useStore((s) => s.cellOpacity);
+  const cellSaturation = useStore((s) => s.cellSaturation);
+  const cellHueOffset = useStore((s) => s.cellHueOffset);
+  const highlightCell = useStore((s) => s.highlightCell);
+  const cellEdges = useStore((s) => s.cellEdges);
+  const highlightPair = useStore((s) => s.highlightPair);
+  const pairColorMode = useStore((s) => s.pairColorMode);
 
   const planes = planesFor(dimension);
+  const cells = useMemo(() => buildCells(dimension), [dimension]);
+  const cellPairs = useMemo(() => buildCellPairs(cells), [cells]);
+  const cellNoun = dimension <= 3 ? "faces" : "cubes";
 
   const setDimension = useStore((s) => s.setDimension);
   const setRotation = useStore((s) => s.setRotation);
@@ -49,6 +62,14 @@ export default function ControlPanel() {
   const setShowVertices = useStore((s) => s.setShowVertices);
   const setDepthFade = useStore((s) => s.setDepthFade);
   const applyPreset = useStore((s) => s.applyPreset);
+  const setShowCells = useStore((s) => s.setShowCells);
+  const setCellOpacity = useStore((s) => s.setCellOpacity);
+  const setCellSaturation = useStore((s) => s.setCellSaturation);
+  const setCellHueOffset = useStore((s) => s.setCellHueOffset);
+  const setHighlightCell = useStore((s) => s.setHighlightCell);
+  const setCellEdges = useStore((s) => s.setCellEdges);
+  const setHighlightPair = useStore((s) => s.setHighlightPair);
+  const setPairColorMode = useStore((s) => s.setPairColorMode);
 
   const dimLabel = ["", "", "", "Cube", "Tesseract", "Penteract"][dimension] ?? "N-cube";
 
@@ -197,6 +218,108 @@ export default function ControlPanel() {
             unit="°"
             onChange={setFov}
           />
+        </Section>
+
+        <Section title={dimension <= 3 ? "Faces" : "Cubes"} badge={`${cells.length} ${cellNoun}`} defaultOpen={true}>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] uppercase tracking-[0.14em] text-white/55 font-mono">
+              Show
+            </span>
+            <button
+              onClick={() => setShowCells(!showCells)}
+              className={`btn ${showCells ? "btn-active" : ""}`}
+            >
+              {showCells ? "On" : "Off"}
+            </button>
+          </div>
+          {showCells && (
+            <>
+              <Slider
+                label="Opacity"
+                value={cellOpacity}
+                min={0}
+                max={1}
+                step={0.01}
+                onChange={setCellOpacity}
+              />
+              <Slider
+                label="Saturation"
+                value={cellSaturation}
+                min={0}
+                max={1}
+                step={0.01}
+                onChange={setCellSaturation}
+              />
+              <Slider
+                label="Hue offset"
+                value={cellHueOffset}
+                min={0}
+                max={1}
+                step={0.01}
+                onChange={setCellHueOffset}
+              />
+              <Slider
+                label="Highlight cube"
+                value={highlightCell}
+                min={-1}
+                max={Math.max(0, cells.length - 1)}
+                step={1}
+                format={(v) => (v < 0 ? "all" : `#${v}`)}
+                onChange={(v) => setHighlightCell(Math.round(v))}
+              />
+              {highlightCell >= 0 && cells[highlightCell] && (
+                <p className="text-[10px] font-mono text-white/55 leading-relaxed">
+                  {cells[highlightCell].label}
+                </p>
+              )}
+              {cellPairs.length > 0 && (
+                <Slider
+                  label="Highlight pair"
+                  value={highlightPair}
+                  min={-1}
+                  max={cellPairs.length - 1}
+                  step={1}
+                  format={(v) => (v < 0 ? "all" : `pair ${v}`)}
+                  onChange={(v) => setHighlightPair(Math.round(v))}
+                />
+              )}
+              {highlightPair >= 0 && cellPairs[highlightPair] && (
+                <p className="text-[10px] font-mono text-white/55 leading-relaxed">
+                  {cellPairs[highlightPair].label} · #{cellPairs[highlightPair].a} ↔ #{cellPairs[highlightPair].b}
+                </p>
+              )}
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] uppercase tracking-[0.14em] text-white/55 font-mono">
+                  Color by pair
+                </span>
+                <button
+                  onClick={() => setPairColorMode(!pairColorMode)}
+                  className={`btn ${pairColorMode ? "btn-active" : ""}`}
+                >
+                  {pairColorMode ? "On" : "Off"}
+                </button>
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] uppercase tracking-[0.14em] text-white/55 font-mono">
+                  Outline
+                </span>
+                <button
+                  onClick={() => setCellEdges(!cellEdges)}
+                  className={`btn ${cellEdges ? "btn-active" : ""}`}
+                >
+                  {cellEdges ? "On" : "Off"}
+                </button>
+              </div>
+              <p className="text-[10px] text-white/45 leading-relaxed">
+                {dimension === 3 &&
+                  "Each face of the cube gets its own color."}
+                {dimension === 4 &&
+                  "The 8 cubes (3-cells) of the tesseract — each in a unique hue."}
+                {dimension === 5 &&
+                  "The 40 cubic cells of the penteract — colored to tell them apart."}
+              </p>
+            </>
+          )}
         </Section>
 
         <Section title="Theme">

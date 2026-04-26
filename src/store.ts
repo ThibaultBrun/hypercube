@@ -25,6 +25,15 @@ export interface HypercubeState {
   fov: number;
   preset: string;
 
+  showCells: boolean;
+  cellOpacity: number;
+  cellSaturation: number;
+  cellHueOffset: number;
+  highlightCell: number;
+  cellEdges: boolean;
+  highlightPair: number;
+  pairColorMode: boolean;
+
   setDimension: (n: number) => void;
   setRotation: (key: string, v: number) => void;
   setSpeed: (key: string, v: number) => void;
@@ -46,6 +55,15 @@ export interface HypercubeState {
   setDepthFade: (v: number) => void;
   setFov: (v: number) => void;
   applyPreset: (name: string) => void;
+
+  setShowCells: (v: boolean) => void;
+  setCellOpacity: (v: number) => void;
+  setCellSaturation: (v: number) => void;
+  setCellHueOffset: (v: number) => void;
+  setHighlightCell: (v: number) => void;
+  setCellEdges: (v: boolean) => void;
+  setHighlightPair: (v: number) => void;
+  setPairColorMode: (v: boolean) => void;
 }
 
 const DEFAULT_DIM = 4;
@@ -107,7 +125,17 @@ export const useStore = create<HypercubeState>((set, get) => ({
   fov: 55,
   preset: "Neon",
 
-  setDimension: (n) => set({ dimension: n, rotations: {} }),
+  showCells: true,
+  cellOpacity: 0.18,
+  cellSaturation: 0.75,
+  cellHueOffset: 0,
+  highlightCell: -1,
+  cellEdges: false,
+  highlightPair: -1,
+  pairColorMode: false,
+
+  setDimension: (n) =>
+    set({ dimension: n, rotations: {}, highlightCell: -1, highlightPair: -1 }),
   setRotation: (key, v) =>
     set((s) => ({ rotations: { ...s.rotations, [key]: v } })),
   setSpeed: (key, v) =>
@@ -148,6 +176,15 @@ export const useStore = create<HypercubeState>((set, get) => ({
     const p = presets[name];
     if (p) set({ ...p, preset: name });
   },
+
+  setShowCells: (v) => set({ showCells: v }),
+  setCellOpacity: (v) => set({ cellOpacity: v }),
+  setCellSaturation: (v) => set({ cellSaturation: v }),
+  setCellHueOffset: (v) => set({ cellHueOffset: v }),
+  setHighlightCell: (v) => set({ highlightCell: v }),
+  setCellEdges: (v) => set({ cellEdges: v }),
+  setHighlightPair: (v) => set({ highlightPair: v }),
+  setPairColorMode: (v) => set({ pairColorMode: v }),
 }));
 
 export const PRESET_NAMES = Object.keys(presets);
