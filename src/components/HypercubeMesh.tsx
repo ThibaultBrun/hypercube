@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { buildNCube, buildCells, buildCellPairs } from "../hypercube/geometry";
+import { buildNCube, buildCells, buildCellPairs, type KFace } from "../hypercube/geometry";
 import { planesFor, rotatePoint } from "../hypercube/rotation";
 import { projectTo3D } from "../hypercube/projection";
 import { useStore } from "../store";
@@ -18,6 +18,18 @@ const CUBE_QUADS: [number, number, number, number][] = [
 ];
 
 const GOLDEN = 0.6180339887498949;
+
+const DALI_RADIUS = 2;
+
+function daliCenter(cell: KFace): [number, number, number] {
+  if (cell.fixed.length === 0) return [0, 0, 0];
+  const { axis, value } = cell.fixed[0];
+  const r = DALI_RADIUS;
+  if (axis === 0) return [value * r, 0, 0];
+  if (axis === 1) return [0, value * r, 0];
+  if (axis === 2) return [0, 0, value * r];
+  return value > 0 ? [0, 0, 0] : [0, -2 * r, 0];
+}
 
 export default function HypercubeMesh() {
   const dimension = useStore((s) => s.dimension);
@@ -42,6 +54,8 @@ export default function HypercubeMesh() {
   const cellEdges = useStore((s) => s.cellEdges);
   const highlightPair = useStore((s) => s.highlightPair);
   const pairColorMode = useStore((s) => s.pairColorMode);
+  const view = useStore((s) => s.view);
+  const dali = view === "dali" && dimension === 4;
 
   const cube = useMemo(() => buildNCube(dimension), [dimension]);
   const planes = useMemo(() => planesFor(dimension), [dimension]);
@@ -230,7 +244,7 @@ export default function HypercubeMesh() {
       vertexPositions[i * 3 + 2] = projected[i][2];
     }
 
-    if (showCells && cells.length > 0) {
+    if ((showCells || dali) && cells.length > 0) {
       const anyHighlight = highlightCell >= 0 || highlightPair >= 0;
       for (let ci = 0; ci < cells.length; ci++) {
         const cell = cells[ci];
@@ -240,6 +254,24 @@ export default function HypercubeMesh() {
         const focused = !anyHighlight || highlightCell === ci || inPair;
         const dimMul = focused ? 1 : 0.06;
         const baseColor = cellBaseColors[ci];
+
+        if (dali) {
+          const center = daliCenter(cell);
+          const m = dimMul;
+          for (let vi = 0; vi < vertsPerCell; vi++) {
+            const sx = (vi & 1) ? 1 : -1;
+            const sy = (vi & 2) ? 1 : -1;
+            const sz = (vi & 4) ? 1 : -1;
+            const off = (baseV + vi) * 3;
+            cellPositions[off + 0] = (center[0] + sx) * scale;
+            cellPositions[off + 1] = (center[1] + sy) * scale;
+            cellPositions[off + 2] = (center[2] + sz) * scale;
+            cellColorBuf[off + 0] = baseColor.r * m;
+            cellColorBuf[off + 1] = baseColor.g * m;
+            cellColorBuf[off + 2] = baseColor.b * m;
+          }
+          continue;
+        }
 
         let wAvg = 0;
         for (let vi = 0; vi < vertsPerCell; vi++) {
@@ -287,7 +319,7 @@ export default function HypercubeMesh() {
 
   return (
     <group>
-      {showCells && cells.length > 0 && (
+      {(showCells || dali) && cells.length > 0 && (
         <mesh ref={cellRef} renderOrder={-1}>
           <bufferGeometry>
             <bufferAttribute
@@ -303,15 +335,15 @@ export default function HypercubeMesh() {
           <meshBasicMaterial
             vertexColors
             transparent
-            opacity={cellOpacity}
+            opacity={dali ? Math.max(cellOpacity, 0.55) : cellOpacity}
             side={THREE.DoubleSide}
-            depthWrite={false}
+            depthWrite={dali}
             toneMapped={false}
           />
         </mesh>
       )}
 
-      {showCells && cellEdges && cells.length > 0 && (
+      {(dali || (showCells && cellEdges)) && cells.length > 0 && (
         <lineSegments ref={cellEdgeRef} renderOrder={0}>
           <bufferGeometry>
             <bufferAttribute
@@ -327,13 +359,14 @@ export default function HypercubeMesh() {
           <lineBasicMaterial
             vertexColors
             transparent
-            opacity={Math.min(1, cellOpacity * 4)}
+            opacity={dali ? 1 : Math.min(1, cellOpacity * 4)}
             depthWrite={false}
             toneMapped={false}
           />
         </lineSegments>
       )}
 
+      {!dali && (
       <lineSegments ref={lineRef} renderOrder={1}>
         <bufferGeometry>
           <bufferAttribute
@@ -352,8 +385,9 @@ export default function HypercubeMesh() {
           toneMapped={false}
         />
       </lineSegments>
+      )}
 
-      {showVertices && (
+      {!dali && showVertices && (
         <points ref={pointRef} renderOrder={2}>
           <bufferGeometry>
             <bufferAttribute

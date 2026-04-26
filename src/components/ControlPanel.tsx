@@ -36,6 +36,7 @@ export default function ControlPanel() {
   const cellEdges = useStore((s) => s.cellEdges);
   const highlightPair = useStore((s) => s.highlightPair);
   const pairColorMode = useStore((s) => s.pairColorMode);
+  const view = useStore((s) => s.view);
 
   const planes = planesFor(dimension);
   const cells = useMemo(() => buildCells(dimension), [dimension]);
@@ -70,6 +71,7 @@ export default function ControlPanel() {
   const setCellEdges = useStore((s) => s.setCellEdges);
   const setHighlightPair = useStore((s) => s.setHighlightPair);
   const setPairColorMode = useStore((s) => s.setPairColorMode);
+  const setView = useStore((s) => s.setView);
 
   const dimLabel = ["", "", "", "Cube", "Tesseract", "Penteract"][dimension] ?? "N-cube";
 
@@ -122,6 +124,30 @@ export default function ControlPanel() {
             <Shuffle size={12} />
           </button>
         </div>
+
+        <Section title="View" defaultOpen={true}>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setView("rotating")}
+              className={`btn ${view === "rotating" ? "btn-active" : ""}`}
+            >
+              Rotating
+            </button>
+            <button
+              onClick={() => setView("dali")}
+              className={`btn ${view === "dali" ? "btn-active" : ""}`}
+              disabled={dimension !== 4}
+              title={dimension !== 4 ? "Dalí unfolding only available in 4D" : ""}
+            >
+              Dalí
+            </button>
+          </div>
+          <p className="text-[10px] text-white/45 leading-relaxed">
+            {view === "dali"
+              ? "Tesseract unfolded into Dalí's 3D cross — 8 cubes laid out in space, each colored to identify."
+              : "Standard 4D rotation projected to 3D."}
+          </p>
+        </Section>
 
         <Section title="Dimension" badge={`${1 << dimension} vertices`}>
           <div className="grid grid-cols-3 gap-2">

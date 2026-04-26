@@ -33,6 +33,7 @@ export interface HypercubeState {
   cellEdges: boolean;
   highlightPair: number;
   pairColorMode: boolean;
+  view: "rotating" | "dali";
 
   setDimension: (n: number) => void;
   setRotation: (key: string, v: number) => void;
@@ -64,6 +65,7 @@ export interface HypercubeState {
   setCellEdges: (v: boolean) => void;
   setHighlightPair: (v: number) => void;
   setPairColorMode: (v: boolean) => void;
+  setView: (v: "rotating" | "dali") => void;
 }
 
 const DEFAULT_DIM = 4;
@@ -133,9 +135,16 @@ export const useStore = create<HypercubeState>((set, get) => ({
   cellEdges: false,
   highlightPair: -1,
   pairColorMode: false,
+  view: "rotating",
 
   setDimension: (n) =>
-    set({ dimension: n, rotations: {}, highlightCell: -1, highlightPair: -1 }),
+    set((s) => ({
+      dimension: n,
+      rotations: {},
+      highlightCell: -1,
+      highlightPair: -1,
+      view: n === 4 ? s.view : "rotating",
+    })),
   setRotation: (key, v) =>
     set((s) => ({ rotations: { ...s.rotations, [key]: v } })),
   setSpeed: (key, v) =>
@@ -185,6 +194,7 @@ export const useStore = create<HypercubeState>((set, get) => ({
   setCellEdges: (v) => set({ cellEdges: v }),
   setHighlightPair: (v) => set({ highlightPair: v }),
   setPairColorMode: (v) => set({ pairColorMode: v }),
+  setView: (v) => set({ view: v }),
 }));
 
 export const PRESET_NAMES = Object.keys(presets);
