@@ -1,13 +1,37 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import HypercubeScene from "./components/HypercubeScene";
 import ControlPanel from "./components/ControlPanel";
 import { planesFor } from "./hypercube/rotation";
 import { useStore } from "./store";
 
+const BUILD_PHASES = [
+  { range: [0, 0.04], title: "1 — A 3D cube", desc: "8 vertices, 12 edges, 6 faces, 1 volume." },
+  { range: [0.04, 0.55], title: "2 — Extrude along W", desc: "Translate the cube perpendicular to all 3 axes (the new W axis, in yellow)." },
+  { range: [0.55, 0.95], title: "3 — Sweep the faces", desc: "Each of the 6 faces sweeps a new cube. Plus the original + the copy = 8 cubes." },
+  { range: [0.95, 1.01], title: "4 — Tesseract complete", desc: "16 vertices · 32 edges · 24 squares · 8 cubic cells." },
+];
+
 export default function App() {
   const dimension = useStore((s) => s.dimension);
   const paused = useStore((s) => s.paused);
   const setPaused = useStore((s) => s.setPaused);
+  const view = useStore((s) => s.view);
+  const buildStart = useStore((s) => s.buildStart);
+  const [phaseIdx, setPhaseIdx] = useState(0);
+
+  useEffect(() => {
+    if (view !== "build") return;
+    const id = setInterval(() => {
+      const elapsed = ((Date.now() - buildStart) / 1000) % 12;
+      const raw = Math.min(1, elapsed / 8);
+      const t = raw < 0.5 ? 4 * raw * raw * raw : 1 - Math.pow(-2 * raw + 2, 3) / 2;
+      const idx = BUILD_PHASES.findIndex(
+        (p) => t >= p.range[0] && t < p.range[1],
+      );
+      if (idx >= 0) setPhaseIdx(idx);
+    }, 120);
+    return () => clearInterval(id);
+  }, [view, buildStart]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -56,6 +80,18 @@ export default function App() {
 
       <div className="flex-1 relative">
         <HypercubeScene />
+        {view === "build" && (
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 select-none pointer-events-none">
+            <div className="glass-strong px-5 py-3 rounded-xl text-center max-w-md">
+              <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/80 font-mono">
+                {BUILD_PHASES[phaseIdx]?.title}
+              </div>
+              <div className="text-[12px] text-white/80 mt-1.5 leading-relaxed">
+                {BUILD_PHASES[phaseIdx]?.desc}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <ControlPanel />

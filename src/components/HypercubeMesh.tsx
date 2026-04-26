@@ -55,7 +55,9 @@ export default function HypercubeMesh() {
   const highlightPair = useStore((s) => s.highlightPair);
   const pairColorMode = useStore((s) => s.pairColorMode);
   const view = useStore((s) => s.view);
+  const buildStart = useStore((s) => s.buildStart);
   const dali = view === "dali" && dimension === 4;
+  const build = view === "build" && dimension === 4;
 
   const cube = useMemo(() => buildNCube(dimension), [dimension]);
   const planes = useMemo(() => planesFor(dimension), [dimension]);
@@ -173,7 +175,7 @@ export default function HypercubeMesh() {
   const colB = useMemo(() => new THREE.Color(), []);
 
   useFrame((_, delta) => {
-    if (!paused) {
+    if (!paused && !build) {
       for (const p of planes) {
         const speed = speeds[p.key] ?? 0;
         if (speed !== 0) {
@@ -182,13 +184,25 @@ export default function HypercubeMesh() {
       }
     }
 
-    const activeRotations = planes.map((p) => ({
-      i: p.i,
-      j: p.j,
-      angle: (rotationsState[p.key] ?? 0) + (accRotations.current[p.key] ?? 0),
-    }));
+    let buildT = 1;
+    if (build) {
+      const elapsed = ((Date.now() - buildStart) / 1000) % 12;
+      const raw = Math.min(1, elapsed / 8);
+      buildT = raw < 1 ? raw < 0.5 ? 4 * raw * raw * raw : 1 - Math.pow(-2 * raw + 2, 3) / 2 : 1;
+    }
 
-    const rotated = cube.vertices.map((v) => rotatePoint(v, activeRotations));
+    const activeRotations = build
+      ? []
+      : planes.map((p) => ({
+          i: p.i,
+          j: p.j,
+          angle: (rotationsState[p.key] ?? 0) + (accRotations.current[p.key] ?? 0),
+        }));
+
+    const rotated = cube.vertices.map((v, idx) => {
+      const src = build && idx >= 8 ? [v[0], v[1], v[2], -1 + 2 * buildT] : v;
+      return rotatePoint(src, activeRotations);
+    });
 
     const projected = rotated.map((p) =>
       projectTo3D(p, projection, projectionDistances).map((x) => x * scale) as [
@@ -223,6 +237,18 @@ export default function HypercubeMesh() {
       positions[e * 6 + 4] = pb[1];
       positions[e * 6 + 5] = pb[2];
 
+      const isWEdge = build && b - a === 8;
+      if (isWEdge) {
+        const pulse = 0.7 + 0.3 * Math.sin(Date.now() * 0.004);
+        colors[e * 6 + 0] = pulse;
+        colors[e * 6 + 1] = pulse;
+        colors[e * 6 + 2] = 0.5 * pulse;
+        colors[e * 6 + 3] = pulse;
+        colors[e * 6 + 4] = pulse;
+        colors[e * 6 + 5] = 0.5 * pulse;
+        continue;
+      }
+
       const ta = (wValues[a] - minW) / wRange;
       const tb = (wValues[b] - minW) / wRange;
       tmp.copy(colA).lerp(colB, ta);
@@ -244,7 +270,7 @@ export default function HypercubeMesh() {
       vertexPositions[i * 3 + 2] = projected[i][2];
     }
 
-    if ((showCells || dali) && cells.length > 0) {
+    if ((showCells || dali || build) && cells.length > 0) {
       const anyHighlight = highlightCell >= 0 || highlightPair >= 0;
       for (let ci = 0; ci < cells.length; ci++) {
         const cell = cells[ci];
@@ -319,7 +345,7 @@ export default function HypercubeMesh() {
 
   return (
     <group>
-      {(showCells || dali) && cells.length > 0 && (
+      {(showCells || dali || build) && cells.length > 0 && (
         <mesh ref={cellRef} renderOrder={-1}>
           <bufferGeometry>
             <bufferAttribute
@@ -335,7 +361,7 @@ export default function HypercubeMesh() {
           <meshBasicMaterial
             vertexColors
             transparent
-            opacity={dali ? Math.max(cellOpacity, 0.55) : cellOpacity}
+            opacity={dali ? Math.max(cellOpacity, 0.55) : build ? 0.32 : cellOpacity}
             side={THREE.DoubleSide}
             depthWrite={dali}
             toneMapped={false}
@@ -343,7 +369,7 @@ export default function HypercubeMesh() {
         </mesh>
       )}
 
-      {(dali || (showCells && cellEdges)) && cells.length > 0 && (
+      {(dali || build || (showCells && cellEdges)) && cells.length > 0 && (
         <lineSegments ref={cellEdgeRef} renderOrder={0}>
           <bufferGeometry>
             <bufferAttribute
@@ -359,7 +385,7 @@ export default function HypercubeMesh() {
           <lineBasicMaterial
             vertexColors
             transparent
-            opacity={dali ? 1 : Math.min(1, cellOpacity * 4)}
+            opacity={dali || build ? 1 : Math.min(1, cellOpacity * 4)}
             depthWrite={false}
             toneMapped={false}
           />
