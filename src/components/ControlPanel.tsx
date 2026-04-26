@@ -125,39 +125,37 @@ export default function ControlPanel() {
           </button>
         </div>
 
-        <Section title="View" defaultOpen={true}>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={() => setView("rotating")}
-              className={`btn ${view === "rotating" ? "btn-active" : ""}`}
-            >
-              Rotating
-            </button>
-            <button
-              onClick={() => setView("build")}
-              className={`btn ${view === "build" ? "btn-active" : ""}`}
-              disabled={dimension !== 4}
-              title={dimension !== 4 ? "Build animation only available in 4D" : ""}
-            >
-              Build
-            </button>
-            <button
-              onClick={() => setView("dali")}
-              className={`btn ${view === "dali" ? "btn-active" : ""}`}
-              disabled={dimension !== 4}
-              title={dimension !== 4 ? "Dalí unfolding only available in 4D" : ""}
-            >
-              Dalí
-            </button>
-          </div>
-          <p className="text-[10px] text-white/45 leading-relaxed">
-            {view === "dali" &&
-              "Tesseract unfolded into Dalí's 3D cross — 8 cubes laid out in space, each colored to identify."}
-            {view === "build" &&
-              "Watch the cube extrude along W (yellow edges) to form 8 cubic cells — the construction of the tesseract."}
-            {view === "rotating" && "Standard 4D rotation projected to 3D."}
-          </p>
-        </Section>
+        {dimension === 4 && (
+          <Section title="View" defaultOpen={true}>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setView("rotating")}
+                className={`btn ${view === "rotating" ? "btn-active" : ""}`}
+              >
+                Rotating
+              </button>
+              <button
+                onClick={() => setView("build")}
+                className={`btn ${view === "build" ? "btn-active" : ""}`}
+              >
+                Build
+              </button>
+              <button
+                onClick={() => setView("dali")}
+                className={`btn ${view === "dali" ? "btn-active" : ""}`}
+              >
+                Dalí
+              </button>
+            </div>
+            <p className="text-[10px] text-white/45 leading-relaxed">
+              {view === "dali" &&
+                "Tesseract unfolded into Dalí's 3D cross — 8 cubes laid out in space, each colored to identify."}
+              {view === "build" &&
+                "Watch the cube extrude along W (yellow edges) to form 8 cubic cells — the construction of the tesseract."}
+              {view === "rotating" && "Standard 4D rotation projected to 3D."}
+            </p>
+          </Section>
+        )}
 
         <Section title="Dimension" badge={`${1 << dimension} vertices`}>
           <div className="grid grid-cols-3 gap-2">
